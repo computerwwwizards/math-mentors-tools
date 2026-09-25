@@ -8,11 +8,12 @@ Let's start with a fixed set of buttons and then move up in the process of abstr
 
 Or alternative, it can be shown as the last key of the row that contains for to ocupy as much as two keys
 
-![Keyboard layout with right side biggerexample](../mockups/keyboard-layout-rigth-side.mockup.svg)
+![Keyboard layout with right side bigger example](../mockups/keyboard-layout-rigth-side.mockup.svg)
 
 Or maybe the first key also
 
-![Keyboard layout with right side biggerexample](../mockups/keyboard-layout-start-key.mockup.svg)
+![Keyboard layout with left side biggerexample](../mockups/keyboard-layout-start-key.mockup.svg)
 
 So, I reason that is not actaully that the second row had only space for 4 exact same width keys, but actually it was able to occupy whatever horizatal space is available. This makes me thin that this layout actaully can be thught as having "invisible" cells that are pretty much straigth as in a traditional table
 
+![Keyboard layout with grid columns](../mockups/grid-columns-for-keyboard.mockup.svg)
