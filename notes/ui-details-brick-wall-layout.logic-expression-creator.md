@@ -7,3 +7,5 @@ Let's start with a fixed set of buttons and then move up in the process of abstr
 ![Keyboard layout example](../mockups/keyboard-layout-example.mockup.svg)
 
 Or alternative, it can be shown as the last key of the row that contains for to ocupy as much as two keys
+
+![Keyboard layout with right side biggerexample](../mockups/keyboard-layout-rigth-side.mockup.svg)
