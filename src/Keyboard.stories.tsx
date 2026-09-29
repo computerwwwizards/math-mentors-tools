@@ -32,12 +32,11 @@ export const InputExample: StoryObj = {
         <input
           ref={inputRef}
           type="text"
+          inputmode="none"
           placeholder="Click here to focus..."
           onFocus={() => setIsFocused(true)}
           onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
               setIsFocused(false);
-            }
           }}
           style={{
             padding: '8px 12px',
@@ -140,14 +139,13 @@ export const ContentEditableExample: StoryObj = {
           data-placeholder="Type here..."
           inputMode="none"
           onKeyDown={(e) => {
-            // Only allow input through virtual keyboard
             e.preventDefault();
           }}
           onFocus={() => setIsFocused(true)}
           onBlur={(e) => {
-            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+  
               setIsFocused(false);
-            }
+      
           }}
           className="contenteditable-input"
           style={{
