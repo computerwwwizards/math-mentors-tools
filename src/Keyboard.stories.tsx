@@ -93,9 +93,23 @@ export const ContentEditableExample: StoryObj = {
     const editableRef = useRef<HTMLDivElement>(null);
 
     const handleKey = (value: string) => {
-      if (editableRef.current) {
-        editableRef.current.focus();
+      if (!editableRef.current) return;
+
+      editableRef.current.focus();
+
+      const selection = window.getSelection();
+      if (
+        selection &&
+        (selection.rangeCount === 0 ||
+          !editableRef.current.contains(selection.anchorNode))
+      ) {
+        const range = document.createRange();
+        range.selectNodeContents(editableRef.current);
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
       }
+
       if (value === 'del' || value === 'Backspace') {
         document.execCommand('delete', false);
       } else {
@@ -105,26 +119,54 @@ export const ContentEditableExample: StoryObj = {
 
     return (
       <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
+        <style>{`
+          .contenteditable-input:empty:before {
+            content: attr(data-placeholder);
+            color: #999;
+            pointer-events: none;
+            display: inline-block;
+          }
+          .contenteditable-input:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+          }
+        `}</style>
         <h3>ContentEditable Example (RFC-001)</h3>
         <p>Click editable div below to focus. Virtual keyboard appears and preserves focus.</p>
         <div
           ref={editableRef}
           contentEditable
           suppressContentEditableWarning
+          data-placeholder="Type here..."
+          inputMode="none"
+          onKeyDown={(e) => {
+            // Only allow input through virtual keyboard
+            e.preventDefault();
+          }}
           onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+              setIsFocused(false);
+            }
+          }}
+          className="contenteditable-input"
           style={{
-            padding: '12px',
-            border: '2px dashed #999',
-            minHeight: '60px',
+            padding: '8px 12px',
+            fontSize: '16px',
+            lineHeight: '20px',
             width: '300px',
-            marginBottom: '16px',
+            height: '38px',
+            boxSizing: 'border-box',
+            border: '1px solid #ccc',
             borderRadius: '4px',
+            marginBottom: '16px',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            backgroundColor: '#fff',
+            cursor: 'text',
             outline: 'none',
           }}
-        >
-          Type here...
-        </div>
+        />
 
         {isFocused && (
           <KeysGroup
