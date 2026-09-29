@@ -15,9 +15,6 @@ export const InputExample: StoryObj = {
     const inputRef = useRef<HTMLInputElement>(null);
 
     const handleKey = (value: string) => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
       if (value === 'del' || value === 'Backspace') {
         document.execCommand('delete', false);
       } else {
