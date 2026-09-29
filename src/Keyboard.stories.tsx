@@ -52,9 +52,6 @@ export const InputExample: StoryObj = {
               '". . del del . . . ."'
             }
             onKey={handleKey}
-            onKeyDel={() => {
-              document.execCommand('delete', false);
-            }}
             preventFocusSteal={true}
             style={{
               display: 'grid',
