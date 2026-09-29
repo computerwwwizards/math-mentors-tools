@@ -21,7 +21,7 @@ export function KeysGroup<T extends React.ElementType = 'div'>({
   style,
   children,
   onPointerDown,
-  onClick,
+  onPointerUp,
   ...restProps
 }: KeysGroupProps<T>) {
   const Component = as || 'div';
@@ -38,10 +38,10 @@ export function KeysGroup<T extends React.ElementType = 'div'>({
     [preventFocusSteal, onPointerDown]
   );
 
-  const handleClick = useCallback(
-    (e: React.MouseEvent<HTMLElement>) => {
-      if (onClick) {
-        onClick(e as any);
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent<HTMLElement>) => {
+      if (onPointerUp) {
+        onPointerUp(e as any);
       }
 
       const target = e.target as HTMLElement;
@@ -66,7 +66,7 @@ export function KeysGroup<T extends React.ElementType = 'div'>({
         }
       }
     },
-    [onKey, onClick, restProps]
+    [onKey, onPointerUp, restProps]
   );
 
   const combinedStyle: React.CSSProperties = {
@@ -88,7 +88,7 @@ export function KeysGroup<T extends React.ElementType = 'div'>({
       role="toolbar"
       style={combinedStyle}
       onPointerDown={handlePointerDown}
-      onClick={handleClick}
+      onPointerUp={handlePointerUp}
       {...(domProps as any)}
     >
       {children}

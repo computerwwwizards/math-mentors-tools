@@ -29,10 +29,10 @@ export const InputExample: StoryObj = {
         <input
           ref={inputRef}
           type="text"
-          inputmode="none"
+          inputMode="none"
           placeholder="Click here to focus..."
           onFocus={() => setIsFocused(true)}
-          onBlur={(e) => {
+          onBlur={() => {
               setIsFocused(false);
           }}
           style={{
@@ -139,7 +139,7 @@ export const ContentEditableExample: StoryObj = {
             e.preventDefault();
           }}
           onFocus={() => setIsFocused(true)}
-          onBlur={(e) => {
+          onBlur={() => {
   
               setIsFocused(false);
       
