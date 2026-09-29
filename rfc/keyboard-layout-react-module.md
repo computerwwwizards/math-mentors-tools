@@ -81,7 +81,7 @@ For layouts requiring a single vertical key that spans down beside multiple rows
 
 ```text
 [ a ][ b ][ c ]| v |
-[  d   ][ e    ]|   |
+[  d  ][ e    ]|   |
 ```
 
 Simply repeat the target character identifier vertically across consecutive layout string rows. The engine combines them into a shared continuous vertical track:
@@ -104,67 +104,183 @@ Simply repeat the target character identifier vertically across consecutive layo
 
 ## Reference-level explanation
 
-Both the `<Key>` and `<KeysGroup>` components must implement a fully working **polymorphic `as` prop**. This allows developers to change the underlying HTML element rendered at runtime (e.g., swapping a `<div>` layout container for a `<section>`, or turning a `<Key>` into an anchor `<a>` or semantic `<button>`) while preserving all internal layout systems.
+Both the `<Key>` and `<KeysGroup>` components implement a fully working **polymorphic `as` prop**. This allows developers to change the underlying HTML element rendered at runtime (e.g., swapping a `<div>` layout container for a `<section>`, or turning a `<Key>` into an anchor `<a>` or semantic `<button>`) while preserving all internal layout systems.
+
+Because both components are polymorphic, standard intrinsic HTML attributes (such as `children`, `id`, `className`, or `style`) are inherited automatically via the chosen polymorphic element type and do not require redundant manual declarations in custom prop contracts.
+
+### Focus Management & Preventing Focus Stealing
+Virtual keyboards primarily serve to enter information into an active input or editable area. Inputs being edited SHOULD not lose focus while the user triggers keys. By default, interactive HTML elements like `<button>` capture focus upon user interaction.
+
+To prevent this default focus shift, `<KeysGroup>` intercepts and cancels the `pointerdown` default behavior across its delegated boundaries.
+
+#### Opt-Out Configuration
+Because specific workflows or custom inputs may require native browser focus retention on individual keys, this mechanism can be explicitly disabled at the group container level via the `preventFocusSteal` prop:
+
+* **Default (`true`):** Cancels `pointerdown` default events, preserving focus on the active input.
+* **Opt-out (`false`):** Restores native browser focus behavior, allowing keys to receive focus when pressed.
+
+#### Accessibility & ARIA Contract Overrides
+To balance focus retention with assistive technology navigation, `<KeysGroup>` and `<Key>` provide native accessibility defaults:
+* `<KeysGroup>` defaults its semantic accessibility role to `role="toolbar"` (or `role="grid"` for structured multi-row navigation) and accepts association to the target input via `aria-controls`.
+* Key navigation across tab tracks is managed via an internal Roving `tabindex` strategy, preventing keyboard focus lockups without stripping assistive devices of cursor awareness.
+
+> **Crucial Warning on Overrides:** Because these components are polymorphic, standard ARIA props (`role`, `aria-controls`, `aria-label`, etc.) are already valid and accepted on the component interfaces. However, these accessibility attributes are **pre-configured with calibrated internal defaults**. Manually overriding these properties without adhering to WAI-ARIA Virtual Keyboard design patterns risks clobbering the component's internal accessibility wiring, breaking screen reader interaction models and making the component non-accessible.
+
+### Event Emissions & Delegation
+
+#### Unified Event Model
+Each time a key is pressed, the event system identifies which key was triggered and routes that data to the target input or state listener. Attaching individual event listeners to every key introduces unnecessary DOM listeners and complicates focus-prevention logic. Therefore, `<KeysGroup>` MUST use **event delegation**.
+
+`<KeysGroup>` provides a dual-dispatch event architecture:
+1. **Global Callback (`onKey`):** Fires generically whenever any key inside the group is pressed, passing the resolved key value.
+2. **Targeted Area Callbacks (`onKey*`):** Concurrently dispatches key-specific handlers mapped dynamically to layout area identifiers (e.g., if a layout declares an area named `del`, `<KeysGroup>` triggers both `onKey("del")` and `onKeyDel("del")`).
+
+#### Event Target Resolution & CSS Containment
+In delegated event models, child nodes (such as nested SVGs, paths, or inner icon labels) can become the event's raw `target`. To preserve seamless delegation without requiring manual traversal logic like `.closest()` at runtime, the `<Key>` component explicitly applies `pointer-events: none` via CSS to all of its descendant children (`& > * { pointer-events: none; }`). This guarantees that `event.target` consistently resolves to the top-level `<Key>` container hosting the `data-value` and `data-area` attributes, completely preventing inner icon nodes from intercepting pointer interactions.
+
+```tsx
+const toggleReducer = (prev: boolean) => !prev;
+const appendReducer = (prev: string, next: string) => prev + next;
+
+function Example() {
+   const [isHidden, toggle] = useReducer(toggleReducer, true);
+   const [value, addValue] = useReducer(appendReducer, "");
+
+   return (
+     <>
+      <input
+        id="sample-input"
+        value={value} 
+        onFocus={toggle}
+        onBlur={toggle}
+        inputMode="none"
+      /> 
+      <div
+        tabIndex={-1}
+        hidden={isHidden} 
+        onPointerDown={(event) => {
+            // Focus preservation pattern
+            event.preventDefault();
+        }} 
+        onPointerUp={(event) => {
+            const { value } = (event.target as HTMLElement).dataset;
+
+            if (!value)
+                return;
+            
+            addValue(value);
+        }}  
+      >
+        <button type="button" data-value="A">A</button>
+        <button type="button" data-value="B">B</button>
+        <button type="button" data-value="C">
+            {/* Descendant pointer-events are disabled to ensure button is event.target */}
+            <svg 
+                style={{ pointerEvents: "none" }} 
+                width="10" 
+                height="10" 
+                xmlns="http://www.w3.org/2000/svg"
+            >
+              <rect width="10" height="10" fill="black" />
+            </svg>
+        </button>
+      </div>
+     </>
+   );
+}
+```
+
+With the proposed abstraction layer:
+
+```tsx
+function AnotherExample() {
+    const [isHidden, toggle] = useReducer(toggleReducer, true);
+    const [value, addValue] = useReducer(appendReducer, "");
+
+    return (
+      <>
+        <input
+            id="virtual-input"
+            value={value} 
+            onFocus={toggle}
+            onBlur={toggle} 
+        /> 
+        <KeysGroup 
+            aria-controls="virtual-input"
+            onKey={addValue}
+            onKeyDel={() => console.log("Delete specific action")}
+            preventFocusSteal={true}
+            hidden={isHidden}
+        >
+            <Key>A</Key>
+            <Key>B</Key>
+            <Key area="c" value="C">
+                <svg width="10" height="10" xmlns="http://www.w3.org/2000/svg">
+                  <rect width="10" height="10" fill="black" />
+                </svg>
+            </Key>
+            <Key area="del">Del</Key>
+        </KeysGroup>
+      </>
+    );
+}
+```
+
+*Note on Data Storage:* Values assigned via `value` reside in DOM dataset attributes. For architectures requiring values to remain strictly in application memory (e.g., secure credential input), implementors should note that this implementation is designated strictly for non-critical, non-sensitive input flows.
+
+---
 
 ### Component Prop Types
 
-#### `<Key>` Components
-The `<Key>` component forwards all intrinsic attributes of its target element type and introduces the following API configuration:
+#### `<Key>` Component
+Inherits all attributes of its polymorphic element type `T` (`React.ComponentPropsWithoutRef<T>`).
 
-| Prop | Type | Description |
-| :--- | :--- | :--- |
-| `as` | `React.ElementType` | The polymorphic HTML tag or custom element to render at runtime. Defaults to `"button"`. |
-| `area` | `string` | Optional. Specifies the target grid-template-area string connector. If omitted, the element infers its location from its text string children. |
+| Prop | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `as` | `React.ElementType` | `"button"` | The polymorphic HTML tag or component to render. |
+| `area` | `string` | `undefined` | Grid-template-area identifier. If omitted, the area is inferred from text content. |
+| `value` | `string` | Derived from `area` or text | The string payload emitted when the key is pressed. |
 
-#### `<KeysGroup>` Components
-The `<KeysGroup>` component serves as the grid manager wrapper:
+*Note: Descendant nodes inside `<Key>` automatically receive `pointer-events: none` via internal CSS to protect delegation target consistency.*
 
-| Prop | Type | Description |
-| :--- | :--- | :--- |
-| `as` | `React.ElementType` | The polymorphic HTML tag or custom element wrapper. Defaults to `"div"`. |
-| `layout` | `string` | The multiline grid-template-areas configuration block defining the 2n column sequence. |
+#### `<KeysGroup>` Component
+Inherits all attributes of its polymorphic element type `T` (`React.ComponentPropsWithoutRef<T>`).
+
+| Prop | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `as` | `React.ElementType` | `"div"` | The polymorphic HTML container element. |
+| `layout` | `string` | `""` | The multiline grid-template-areas matrix defining the 2n column sequence. |
+| `preventFocusSteal` | `boolean` | `true` | When `true`, intercepts `pointerdown` default events to prevent the input from losing focus. Set to `false` to opt out. |
+| `onKey` | `(value: string) => void` | `undefined` | Dispatched when any child key is activated. |
+| `[key: onKey${string}]` | `((value: string) => void) \| undefined` | `undefined` | Dynamic handlers mapped to specific named areas (e.g., `onKeyDel` for `area="del"`). |
 
 ---
 
 ### Implementation Trade-offs & Security Architecture
 
-The architectural choices for passing dynamic matrix profiles like `layout` directly from template inputs create distinct trade-offs regarding browser runtime speed, rendering lifecycles, and environment isolation.
+Below is an overview of the implementation vectors considered, evaluating structural complexity, runtime performance, and security profiles.
 
-Below is an analytical overview of the implementation vectors considered, tracking structural complexity against security compliance parameters.
-
-| Implementation Vector | CSP Compliance Profile | SSR/Hydration Lock | Client Performance |
-| :--- | :--- | :--- | :--- |
-| **1. Pure Inline Attributes** | ❌ Broken / Risky | 🟢 Flawless | 🟢 Native CSS |
-| **2. Server Custom Style** | 🟢 High Security | 🟡 Network Overhead | 🟡 Cache Bottleneck |
-| **3. Hybrid CSR Mutation** | 🟢 High Security | ❌ Layout Thrash | ❌ Intermittent Lag |
-| **4. Native Engine Mapping** | 🟢 High Security | 🟢 Flawless | 🟢 Native CSS |
+| Implementation Vector | CSP Compliance Profile | SSR/Hydration Lock | Client Performance | Browser Compatibility |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Pure Inline Attributes** | ❌ Risky (`unsafe-inline`) | 🟢 Flawless | 🟢 Native CSS | 🟢 Universal |
+| **2. Server Custom Style** | 🟢 Strict (`style-src 'self'`) | 🟡 Network Overhead | 🟡 Cache Bottleneck | 🟢 Universal |
+| **3. Hybrid CSR Mutation** | 🟢 Strict (`style-src 'self'`) | ❌ Layout Thrash | ❌ Intermittent Lag | 🟢 Universal |
+| **4. Native Engine Mapping (Research Target)** | 🟢 Strict (`style-src 'self'`) | 🟢 Flawless | 🟢 Native CSS | 🔴 Unconfirmed / In Spec Draft |
 
 #### Vector 1: Pure Inline Attribute Injection
-Developers using this module often gravitate toward direct HTML `style` object string generation (`style={{ gridTemplateAreas: layout }}`). 
-
-* **The Security Trade-off:** This configuration requires degrading the production host environment to support `style-src 'unsafe-inline'` or `style-src-attr 'unsafe-inline'`. 
-* **The Hazard Profile:** It drops defenses against Cross-Site Styling (XSSss) and UI Redressing. If the input parsing pipeline fails to properly escape layout configurations pulled from database stores, malicious actors can exploit quote escapes to append dangerous style blocks (e.g., full-screen fixed overlays or background tracker links).
-* **The Development Cost:** Low. It offers instant rendering out of the box with zero runtime configuration overhead, making it a common choice for developers willing to compromise security protocols for rapid implementation.
+Direct HTML `style` object injection (`style={{ gridTemplateAreas: layout }}`).
+* **Trade-off:** Requires `style-src 'unsafe-inline'` or `style-src-attr 'unsafe-inline'`. Exposes environments to Cross-Site Styling (XSS) and UI Redressing if dynamic layouts are ingested unescaped.
 
 #### Vector 2: Server-Generated Dynamic CSS Modules
-An alternate approach involves shifting layout generation to a server-side endpoint or Service Worker fallback layer that transforms string profiles into cacheable CSS files.
+Extracting dynamic layouts to a server-side endpoint or Service Worker that generates cached CSS stylesheets.
+* **Trade-off:** Satisfies strict CSP rules, but introduces network synchronization overhead, cache fragmentation, and potential layout delays on slower connections.
 
-* **The Security Profile:** Keeps environments strictly locked down under a strict `style-src 'self'` policy.
-* **The Hazard Profile:** High operational overhead. It introduces data synchronization delays and increases CDN cache fragmentation. Generating independent, per-user layout sheets on the fly drops cache hit rates and forces page loads to stall while fetching blocking layout-related asset endpoints over the network.
+#### Vector 3: Client-Side Runtime DOM Mutation (Hybrid CSR)
+Applying dynamic layout properties via client-side hydration hooks or inline element style attributes post-mount.
+* **Trade-off:** Strict CSP compatibility, but increases the risk of Cumulative Layout Shift (CLS) and forces synchronous layout reflows during tree hydration.
 
-#### Vector 3: Client-Side Runtime Dom Mutation (Hybrid CSR)
-To maintain a strict CSP while avoiding server stylesheet bottlenecks, the module can execute feature detection hooks during client hydration to catch legacy environments.
-
-* **The Security Profile:** Fully compliant with `style-src 'self'`.
-* **The Hazard Profile:** High risk of layout thrashing and Cumulative Layout Shift (CLS). If feature metrics default to a generic baseline grid during SSR, client hydration hooks must step in post-render to append fallback CSS custom properties. 
-* **The Performance Cost:** Bypassing state variables in favor of callback ref mutations mitigates double-rendering issues, but legacy environments still experience visible layout shifts as the browser engine forces synchronous layout calculations right before painting the interface frame.
-
-#### Vector 4: Native CSS Core Mapping (The Target Architecture)
-The recommended production standard bypasses JavaScript manipulation and custom stylesheet builders entirely by utilizing modern CSS Level 3 data-parsing features.
-
-* **The Security Profile:** Maximizes infrastructure safety under a strict `style-src 'self'` rule. No inline style definitions or hashes required.
-* **The Mechanics:** The server outputs layout parameters inside clean `data-layout` and `data-area` node matrices. The module’s static external CSS file intercepts these entries using advanced typed token attributes:
-
+#### Vector 4: Native CSS Core Mapping (Experimental Research Target)
+Utilizes modern CSS token-level `attr()` capabilities directly in static stylesheets:
 ```css
 .grid-container {
   grid-template-areas: attr(data-layout type(*));
@@ -173,44 +289,38 @@ The recommended production standard bypasses JavaScript manipulation and custom 
   grid-area: attr(data-area type(<custom-ident>));
 }
 ```
+* **Trade-off & Research Status:** Offers ideal CSP compliance and frame-one parsing with zero JS execution. However, **engine support remains in doubt and is actively an open research topic**, as stable browser engines do not yet provide baseline implementations for typed token evaluation across layout properties.
 
-* **The Trade-off Profile:** Native layout parsing occurs on frame one during initial tree assembly, ensuring zero rendering delays and completely removing JavaScript from the layout execution loop. 
-* **The Compatibility Cost:** Relies on modern browser engines with stable baseline support for advanced typed `attr()` token evaluations. Legacy browser variations that fail token compatibility checks will safely fall back to the module's standardized hardcoded single-unit grid default unless paired with a structured, animated layout fallback loop.
+---
 
 ## Drawbacks
 
-* **Grid Overallocations:** Forcing a mandatory `2n` grid doubles the column footprint under the hood. While hidden from the developer, large keyboards can lead to large DOM/CSS tree traces when calculating deeply multi-layered intersections.
+* **Grid Overallocations:** Forcing a mandatory `2n` grid doubles the column footprint under the hood. Large keyboards can lead to large DOM/CSS tree traces when calculating deeply multi-layered intersections.
 * **String Parsing Delays:** Mapping string keys (`layout='"a a"'`) directly to identifiers means that mistyping or introducing stray white spaces inside string templates directly breaks the visual layout map without triggering compile-time errors.
 
 ## Alternatives
 
 ### 1. Primitive String Array Layouts
-We looked at industry standards (like `react-simple-keyboard`) that define layouts using raw string arrays (`layout: ['a b c', 'd e']`). 
-
-This pattern restricts keys entirely to primitive string data values. It makes it incredibly difficult to pass rich React subcomponents, custom interactive states, or distinct markup (like SVG icons) into specific keys cleanly.
+Libraries like `react-simple-keyboard` rely on raw string arrays (`layout: ['a b c', 'd e']`). This pattern restricts keys entirely to primitive string data values, making it difficult to pass rich React subcomponents, custom interactive states, or distinct markup (like SVG icons) into specific keys cleanly.
 
 ### 2. Fractional Unit Layout Components (`span` / `offset`)
-We evaluated an approach mimicking traditional UI column grids where sizes are assigned via numeric variables (e.g., `<Key span={2} offset={1}>`).
-
-Keyboards map to fixed physical unit structures, not abstract fractions. Writing explicit column coordinates separates the developer from the spatial layout identity. It turns simple structural alterations into tedious alignment math equations and completely breaks readability when constructing vertical keys.
+An approach mimicking traditional UI column grids where sizes are assigned via numeric variables (e.g., `<Key offset={1} span={2}>`). Keyboards map to fixed physical unit structures, not abstract fractions; writing explicit column coordinates turns structural alterations into tedious alignment math equations and breaks readability when constructing vertical keys.
 
 ### 3. Programmatic Fluent Builders
-We considered exposing a factory style fluent chaining API (e.g., `new KeyboardBuilder().addRow(...)`).
-
-While highly type-safe, method chaining strips away all visual scannability. Layout profiles are spatial, and our template string pattern allows developers to preview the physical representation of the interface directly inside the codebase.
+A factory-style fluent chaining API (e.g., `new KeyboardBuilder().addRow(...)`). While type-safe, method chaining strips away spatial scannability. Layout profiles are spatial, and template string matrices allow developers to preview the physical representation of the interface directly inside the codebase.
 
 ## Prior art
 
-* **`react-simple-keyboard`**: Relies heavily on rigid configuration blocks via simple arrays. Highly limiting for custom JSX markup inclusion or modular template component scoping.
-* **W3C CSS Grid Layout Specification**: Direct baseline reference for `grid-template-areas`. The proposed system is essentially a lightweight typed abstraction layered over native CSS grids.
+* **`react-simple-keyboard`**: Configuration via string arrays; limited JSX markup flexibility.
+* **W3C CSS Grid Layout Specification**: Direct baseline reference for `grid-template-areas`.
+* **WAI-ARIA Toolbar and Grid Patterns**: Standards for keyboard accessibility and directional focus management.
 
 ## Unresolved questions
 
-* How do we handle dynamic localization transformations (e.g., shifting layout matrices instantly from ANSI QWERTY configurations to ISO Azerty setups) cleanly without risking UI re-renders or hydration mismatches?
-* Can we build an automated build-time compiler or macro to warn developers if their template string column counts fail to resolve back cleanly to the expected `2n` factor?
+* **Browser Viability of Vector 4:** What is the browser support timeline and fallback viability for advanced CSS typed `attr()` values in `grid-template-areas`?
+* **Dynamic Localization Transformations:** How can layout matrices shift instantly from ANSI QWERTY to ISO AZERTY without risking UI re-renders or hydration mismatches?
+* **Build-Time Verification:** Can a linting plugin or macro be developed to validate that template string matrices balance correctly to the expected `2n` column factor at compile time?
 
 ## Future possibilities
 
 * Introducing a dedicated build-time Babel plugin or Vite macro that reads static template literals to pre-bake static class maps, entirely removing layout serialization costs at runtime.
-
-
