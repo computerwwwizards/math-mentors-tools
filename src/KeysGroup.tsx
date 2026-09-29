@@ -22,6 +22,8 @@ export function KeysGroup<T extends React.ElementType = 'div'>({
   children,
   onPointerDown,
   onPointerUp,
+  onMouseDown,
+  onTouchStart,
   ...restProps
 }: KeysGroupProps<T>) {
   const Component = as || 'div';
@@ -38,6 +40,30 @@ export function KeysGroup<T extends React.ElementType = 'div'>({
     [preventFocusSteal, onPointerDown]
   );
 
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLElement>) => {
+      if (preventFocusSteal) {
+        e.preventDefault();
+      }
+      if (onMouseDown) {
+        onMouseDown(e as any);
+      }
+    },
+    [preventFocusSteal, onMouseDown]
+  );
+
+  const handleTouchStart = useCallback(
+    (e: React.TouchEvent<HTMLElement>) => {
+      if (preventFocusSteal) {
+        e.preventDefault();
+      }
+      if (onTouchStart) {
+        onTouchStart(e as any);
+      }
+    },
+    [preventFocusSteal, onTouchStart]
+  );
+
   const handlePointerUp = useCallback(
     (e: React.PointerEvent<HTMLElement>) => {
       if (onPointerUp) {
@@ -45,11 +71,12 @@ export function KeysGroup<T extends React.ElementType = 'div'>({
       }
 
       const target = e.target as HTMLElement;
-      const keyEl = target.closest('[data-value],[data-area]') as HTMLElement | null;
-      if (!keyEl) return;
+      if (!target) return;
 
-      const value = keyEl.dataset.value ?? keyEl.dataset.area ?? '';
-      const area = keyEl.dataset.area;
+      const value = target.dataset?.value ?? target.dataset?.area;
+      if (value === undefined) return;
+
+      const area = target.dataset.area;
 
       if (onKey) {
         onKey(value);
@@ -89,6 +116,8 @@ export function KeysGroup<T extends React.ElementType = 'div'>({
       style={combinedStyle}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
+      onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
       {...(domProps as any)}
     >
       {children}
