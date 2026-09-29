@@ -22,7 +22,6 @@ export function KeysGroup<T extends React.ElementType = 'div'>({
   children,
   onPointerDown,
   onPointerUp,
-  onClick,
   ...restProps
 }: KeysGroupProps<T>) {
   const Component = as || 'div';
@@ -70,15 +69,6 @@ export function KeysGroup<T extends React.ElementType = 'div'>({
     [onKey, onPointerUp, restProps]
   );
 
-  const handleClick = useCallback(
-    (e: React.MouseEvent<HTMLElement>) => {
-      if (onClick) {
-        onClick(e as any);
-      }
-    },
-    [onClick]
-  );
-
   const combinedStyle: React.CSSProperties = {
     display: 'grid',
     ...(layout ? { gridTemplateAreas: layout } : {}),
@@ -99,7 +89,6 @@ export function KeysGroup<T extends React.ElementType = 'div'>({
       style={combinedStyle}
       onPointerDown={handlePointerDown}
       onPointerUp={handlePointerUp}
-      onClick={handleClick}
       {...(domProps as any)}
     >
       {children}
