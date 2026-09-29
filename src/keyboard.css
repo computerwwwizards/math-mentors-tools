@@ -1,0 +1,5 @@
+[data-area], [data-value] {
+  & > * {
+    pointer-events: none;
+  }
+}
