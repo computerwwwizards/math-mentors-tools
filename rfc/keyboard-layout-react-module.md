@@ -81,7 +81,7 @@ For layouts requiring a single vertical key that spans down beside multiple rows
 
 ```text
 [ a ][ b ][ c ]| v |
-[  d    ][ e    ]|   |
+[  d  ][ e    ]|   |
 ```
 
 Simply repeat the target character identifier vertically across consecutive layout string rows. The engine combines them into a shared continuous vertical track:
