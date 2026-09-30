@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useSyncExternalStore, useCallback } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Key, KeysGroup } from './index';
 
@@ -23,27 +23,37 @@ export const InputExample: StoryObj = {
       }
     };
 
-    React.useEffect(() => {
-      if (!isFocused) return;
+    const subscribeOutsidePointerDown = useCallback(
+      (onStoreChange: () => void) => {
+        if (!isFocused) return () => {};
 
-      const handlePointerDownOutside = (e: PointerEvent) => {
-        const target = e.target as Node | null;
-        if (!target) return;
+        const handlePointerDownOutside = (e: PointerEvent) => {
+          const target = e.target as Node | null;
+          if (!target) return;
 
-        const isInsideInput = inputRef.current?.contains(target);
-        const isInsideKeyboard = keysGroupRef.current?.contains(target);
+          const isInsideInput = inputRef.current?.contains(target);
+          const isInsideKeyboard = keysGroupRef.current?.contains(target);
 
-        if (!isInsideInput && !isInsideKeyboard) {
-          inputRef.current?.blur();
-          setIsFocused(false);
-        }
-      };
+          if (!isInsideInput && !isInsideKeyboard) {
+            inputRef.current?.blur();
+            setIsFocused(false);
+            onStoreChange();
+          }
+        };
 
-      document.addEventListener('pointerdown', handlePointerDownOutside);
-      return () => {
-        document.removeEventListener('pointerdown', handlePointerDownOutside);
-      };
-    }, [isFocused]);
+        document.addEventListener('pointerdown', handlePointerDownOutside);
+        return () => {
+          document.removeEventListener('pointerdown', handlePointerDownOutside);
+        };
+      },
+      [isFocused]
+    );
+
+    useSyncExternalStore(
+      subscribeOutsidePointerDown,
+      () => isFocused,
+      () => false
+    );
 
     return (
       <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
@@ -136,27 +146,37 @@ export const ContentEditableExample: StoryObj = {
       }
     };
 
-    React.useEffect(() => {
-      if (!isFocused) return;
+    const subscribeOutsidePointerDown = useCallback(
+      (onStoreChange: () => void) => {
+        if (!isFocused) return () => {};
 
-      const handlePointerDownOutside = (e: PointerEvent) => {
-        const target = e.target as Node | null;
-        if (!target) return;
+        const handlePointerDownOutside = (e: PointerEvent) => {
+          const target = e.target as Node | null;
+          if (!target) return;
 
-        const isInsideEditable = editableRef.current?.contains(target);
-        const isInsideKeyboard = keysGroupRef.current?.contains(target);
+          const isInsideEditable = editableRef.current?.contains(target);
+          const isInsideKeyboard = keysGroupRef.current?.contains(target);
 
-        if (!isInsideEditable && !isInsideKeyboard) {
-          editableRef.current?.blur();
-          setIsFocused(false);
-        }
-      };
+          if (!isInsideEditable && !isInsideKeyboard) {
+            editableRef.current?.blur();
+            setIsFocused(false);
+            onStoreChange();
+          }
+        };
 
-      document.addEventListener('pointerdown', handlePointerDownOutside);
-      return () => {
-        document.removeEventListener('pointerdown', handlePointerDownOutside);
-      };
-    }, [isFocused]);
+        document.addEventListener('pointerdown', handlePointerDownOutside);
+        return () => {
+          document.removeEventListener('pointerdown', handlePointerDownOutside);
+        };
+      },
+      [isFocused]
+    );
+
+    useSyncExternalStore(
+      subscribeOutsidePointerDown,
+      () => isFocused,
+      () => false
+    );
 
     return (
       <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
