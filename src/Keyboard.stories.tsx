@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useSyncExternalStore, useCallback } from 'react';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Key, KeysGroup } from './index';
 
@@ -13,6 +13,7 @@ export const InputExample: StoryObj = {
   render: () => {
     const [isFocused, setIsFocused] = useState(false);
     const inputRef = useRef<HTMLInputElement>(null);
+    const keysGroupRef = useRef<HTMLDivElement>(null);
 
     const handleKey = (value: string) => {
       if (value === 'del' || value === 'Backspace') {
@@ -21,6 +22,38 @@ export const InputExample: StoryObj = {
         document.execCommand('insertText', false, value);
       }
     };
+
+    const subscribeOutsidePointerDown = useCallback(
+      (onStoreChange: () => void) => {
+        if (!isFocused) return () => {};
+
+        const handlePointerDownOutside = (e: PointerEvent) => {
+          const target = e.target as Node | null;
+          if (!target) return;
+
+          const isInsideInput = inputRef.current?.contains(target);
+          const isInsideKeyboard = keysGroupRef.current?.contains(target);
+
+          if (!isInsideInput && !isInsideKeyboard) {
+            inputRef.current?.blur();
+            setIsFocused(false);
+            onStoreChange();
+          }
+        };
+
+        document.addEventListener('pointerdown', handlePointerDownOutside);
+        return () => {
+          document.removeEventListener('pointerdown', handlePointerDownOutside);
+        };
+      },
+      [isFocused]
+    );
+
+    useSyncExternalStore(
+      subscribeOutsidePointerDown,
+      () => isFocused,
+      () => false
+    );
 
     return (
       <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
@@ -45,12 +78,13 @@ export const InputExample: StoryObj = {
         />
 
         {isFocused && (
-          <KeysGroup
-            layout={
-              '"a a b b c c v v"' +
-              '"d d d e e e v v"' +
-              '". . del del . . . ."'
-            }
+          <div ref={keysGroupRef}>
+            <KeysGroup
+              layout={
+                '"a a b b c c v v"' +
+                '"d d d e e e v v"' +
+                '". . del del . . . ."'
+              }
             onKey={handleKey}
             preventFocusSteal={true}
             style={{
@@ -74,6 +108,7 @@ export const InputExample: StoryObj = {
               Del
             </Key>
           </KeysGroup>
+          </div>
         )}
       </div>
     );
@@ -84,6 +119,7 @@ export const ContentEditableExample: StoryObj = {
   render: () => {
     const [isFocused, setIsFocused] = useState(false);
     const editableRef = useRef<HTMLDivElement>(null);
+    const keysGroupRef = useRef<HTMLDivElement>(null);
 
     const handleKey = (value: string) => {
       if (!editableRef.current) return;
@@ -109,6 +145,38 @@ export const ContentEditableExample: StoryObj = {
         document.execCommand('insertText', false, value);
       }
     };
+
+    const subscribeOutsidePointerDown = useCallback(
+      (onStoreChange: () => void) => {
+        if (!isFocused) return () => {};
+
+        const handlePointerDownOutside = (e: PointerEvent) => {
+          const target = e.target as Node | null;
+          if (!target) return;
+
+          const isInsideEditable = editableRef.current?.contains(target);
+          const isInsideKeyboard = keysGroupRef.current?.contains(target);
+
+          if (!isInsideEditable && !isInsideKeyboard) {
+            editableRef.current?.blur();
+            setIsFocused(false);
+            onStoreChange();
+          }
+        };
+
+        document.addEventListener('pointerdown', handlePointerDownOutside);
+        return () => {
+          document.removeEventListener('pointerdown', handlePointerDownOutside);
+        };
+      },
+      [isFocused]
+    );
+
+    useSyncExternalStore(
+      subscribeOutsidePointerDown,
+      () => isFocused,
+      () => false
+    );
 
     return (
       <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
@@ -161,12 +229,13 @@ export const ContentEditableExample: StoryObj = {
         />
 
         {isFocused && (
-          <KeysGroup
-            layout={
-              '"a a b b c c"' +
-              '". d d e e ."' +
-              '". . del del . ."'
-            }
+          <div ref={keysGroupRef}>
+            <KeysGroup
+              layout={
+                '"a a b b c c"' +
+                '". d d e e ."' +
+                '". . del del . ."'
+              }
             onKey={handleKey}
             preventFocusSteal={true}
             style={{
@@ -192,6 +261,7 @@ export const ContentEditableExample: StoryObj = {
               </svg>
             </Key>
           </KeysGroup>
+          </div>
         )}
       </div>
     );
