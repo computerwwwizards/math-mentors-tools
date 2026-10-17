@@ -1,0 +1,65 @@
+title: "📦 [RFC Draft]: "
+labels: ["rfc:draft"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Request For Comments (RFC) Draft
+        Welcome! This template mirrors the official **Rust Lang RFC design structure** to facilitate highly comprehensive architectural reviews.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: "1. Summary"
+      description: "Provide a one-paragraph explanation of the proposed feature/change."
+    validations:
+      required: true
+
+  - type: textarea
+    id: motivation
+    attributes:
+      label: "2. Motivation"
+      description: "Why are we doing this? What problem, use cases, or pain points does this solve? What is the expected outcome?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: guide_explanation
+    attributes:
+      label: "3. Guide-Level Explanation"
+      description: "Explain the design as if you were teaching it to another developer. Include user-facing examples, new syntax, or terminal setup adjustments."
+    validations:
+      required: true
+
+  - type: textarea
+    id: reference_explanation
+    attributes:
+      label: "4. Reference-Level Explanation"
+      description: "This is the deep technical spec. Explain the inner mechanics, data graphs, edge cases, implementation details, and interactions with other systems."
+    validations:
+      required: true
+
+  - type: textarea
+    id: drawbacks
+    attributes:
+      label: "5. Drawbacks"
+      description: "Why should we NOT do this? What are the liabilities? Does it slow down CI, add file latency, or overcomplicate things?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: rationale_alternatives
+    attributes:
+      label: "6. Rationale and Alternatives"
+      description: "Why is this design choice better than other ways to solve the problem? What happens if we just do nothing?"
+    validations:
+      required: true
+
+  - type: textarea
+    id: unresolved_questions
+    attributes:
+      label: "7. Unresolved Questions"
+      description: "What technical parts of the design are still completely blank or up in the air? What needs resolving before we merge this draft?"
+      placeholder: "e.g., We still need to test if this causes lockfile serialization errors on Windows systems..."
+    validations:
+      required: false
