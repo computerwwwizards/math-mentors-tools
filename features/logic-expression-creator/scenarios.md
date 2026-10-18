@@ -13,12 +13,21 @@ status: discovery
 * Tap virtual keyboard button "DEL"
 * Verify feedback screen displays "p ∧" with cursor at the end
 * Verify syntax validation state is "incomplete"
+* Tap virtual keyboard button "q"
+* Verify feedback screen displays "p ∧ q" with cursor at the end
+* Verify syntax validation state is "valid"
 
 ### Physical Keyboard Token Translation
 * Initialize application on an "external keyboard" device
 * Type physical keys "p", "&", "(", "q", "v", "r", ")"
 * Verify feedback screen displays "p ∧ (q ∨ r)"
 * Verify syntax validation state is "valid"
+
+### Incomplete Parentheses
+* Enter the expression "p ∧ (q ∨ r"
+* Verify the expression is marked as invalid
+* Close the parenthesis
+* Verify the expression becomes valid
 
 ## Optional Scenarios
 
@@ -28,7 +37,7 @@ status: discovery
 * Verify cursor is positioned between "∧" and "r"
 * Tap virtual keyboard buttons "q", "∧"
 * Verify feedback screen displays "p ∧ q ∧ r"
-* Verify syntax validation engine executes from current cursor index
+* Verify the expression is validated again after the modification
 
 ### Layout Label Toggle Switch
 * Initialize application with active tokens "p", "∧", "q"
